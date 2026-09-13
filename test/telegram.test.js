@@ -23,7 +23,7 @@ test('splitCaption splits long captions at the limit', () => {
   const [caption, overflow] = splitCaption(long);
   assert.equal(caption.length, 1024);
   assert.equal(caption.endsWith('…'), true);
-  assert.equal(caption.length + overflow.length, long.length);
+  assert.equal(caption.length - 1 + overflow.length, long.length);
 });
 
 test('splitCaption returns undefined for empty caption', () => {
