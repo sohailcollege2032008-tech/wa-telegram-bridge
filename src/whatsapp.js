@@ -56,6 +56,7 @@ export async function createWhatsAppConnection({
       const { connection, lastDisconnect, qr } = update;
 
       if (qr && !state.creds.registered) {
+        logger.debug('whatsapp qr event received');
         if (config.pairingMode === 'code') await requestPairing();
         else await onQr?.(qr);
       }
