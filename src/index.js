@@ -6,6 +6,7 @@ import { createLogger } from './logger.js';
 import { TelegramClient } from './telegram.js';
 import { createForwarder } from './forward.js';
 import { createWhatsAppConnection, loadBaileys } from './whatsapp.js';
+import { createCommandPoller } from './commands.js';
 import { jidToPhone } from './caption.js';
 
 const PAIRING_HINT =
@@ -26,6 +27,7 @@ async function main() {
 
   let lastOpenNoticeAt = 0;
   let lastQrSentAt = 0;
+  let waState = config.whatsapp.phone ? 'connecting' : 'unpaired';
 
   const connection = await createWhatsAppConnection({
     config: config.whatsapp,
@@ -57,24 +59,42 @@ async function main() {
       }
     },
     onStateChange: async (state, info) => {
-      if (state === 'open' && Date.now() - lastOpenNoticeAt > 5 * 60_000) {
-        lastOpenNoticeAt = Date.now();
-        const phone = jidToPhone(info.user?.id || '');
-        await telegram.sendText(
-          config.telegram.chatId,
-          `✅ واتساب اتوصل بنجاح — الجسر شغال دلوقتي.\n📱 الرقم: ${phone ? `+${phone}` : 'غير معروف'}`,
-        );
+      if (state === 'open') {
+        waState = 'open';
+        if (Date.now() - lastOpenNoticeAt > 5 * 60_000) {
+          lastOpenNoticeAt = Date.now();
+          const phone = jidToPhone(info.user?.id || '');
+          await telegram.sendText(
+            config.telegram.chatId,
+            `✅ واتساب اتوصل بنجاح — الجسر شغال دلوقتي.\n📱 الرقم: ${phone ? `+${phone}` : 'غير معروف'}`,
+          );
+        }
       } else if (state === 'loggedOut') {
+        waState = 'loggedOut';
         await telegram.sendText(
           config.telegram.chatId,
           '⚠️ جلسة واتساب اتلغيت (logged out). محتاج إعادة ربط بكود جديد — كلمني عشان أعمل لك كود.',
         );
+      } else {
+        waState = state === 'close' ? 'close' : waState;
       }
     },
   });
 
+  const commands = createCommandPoller({
+    telegram,
+    logger,
+    chatId: config.telegram.chatId,
+    getStatus: () => ({
+      waState,
+      waPhone: jidToPhone(connection.socket?.user?.id || ''),
+      pairing: waState === 'connecting' && !connection.socket?.authState?.creds?.registered,
+    }),
+  });
+
   const shutdown = (signal) => {
     logger.info({ signal }, 'shutting down');
+    commands.stop();
     connection.stop();
     setTimeout(() => process.exit(0), 500).unref();
   };
