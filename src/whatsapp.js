@@ -14,6 +14,7 @@ export async function createWhatsAppConnection({
 }) {
   const { state, saveCreds } = await baileys.useMultiFileAuthState(config.authDir);
   let pairingRequestedAt = 0;
+  let pairingCooldownUntil = 0;
   let pairingAttempts = 0;
   let reconnectDelay = 3_000;
   let stopped = false;
@@ -28,6 +29,7 @@ export async function createWhatsAppConnection({
       return;
     }
     const now = Date.now();
+    if (now < pairingCooldownUntil) return;
     if (pairingRequestedAt && now - pairingRequestedAt < PAIRING_RETRY_MS) return;
     pairingRequestedAt = now;
     pairingAttempts += 1;
@@ -36,8 +38,8 @@ export async function createWhatsAppConnection({
       logger.info({ attempt: pairingAttempts }, 'pairing code requested');
       await onPairingCode?.(code);
     } catch (err) {
-      logger.warn({ error: err?.message }, 'pairing code request failed; will retry on next qr event');
-      pairingRequestedAt = 0;
+      logger.warn({ error: err?.message }, 'pairing code request failed; will retry later');
+      pairingCooldownUntil = Date.now() + 60_000;
     }
   }
 
@@ -87,9 +89,11 @@ export async function createWhatsAppConnection({
           return;
         }
         if (loggedOut && !registered) {
-          logger.info('pairing attempt failed or expired; requesting a new code shortly');
-          pairingRequestedAt = 0;
-          setTimeout(connect, 3_000);
+          pairingCooldownUntil = Math.max(pairingCooldownUntil, Date.now() + 30_000);
+          const delay = reconnectDelay;
+          reconnectDelay = Math.min(reconnectDelay * 2, 5 * 60_000);
+          logger.info({ delay }, 'pairing session closed; reconnecting with backoff');
+          setTimeout(connect, delay);
           return;
         }
         const delay = reconnectDelay;
