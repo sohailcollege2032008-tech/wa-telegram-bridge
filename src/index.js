@@ -42,11 +42,15 @@ async function main() {
       );
     },
     onQr: async (qr) => {
+      logger.info({ length: qr.length, prefix: qr.slice(0, 30) }, 'qr updated');
       const QRCode = (await import('qrcode')).default;
       const dir = await mkdtemp(path.join(os.tmpdir(), 'wa-qr-'));
       const file = path.join(dir, 'whatsapp-qr.png');
       try {
-        await writeFile(file, await QRCode.toBuffer(qr, { type: 'png', width: 720, margin: 2 }));
+        await writeFile(
+          file,
+          await QRCode.toBuffer(qr, { type: 'png', width: 800, margin: 2, errorCorrectionLevel: 'L' }),
+        );
         if (lastQrMessageId) {
           await telegram.call('deleteMessage', { chat_id: config.telegram.chatId, message_id: lastQrMessageId }).catch(() => {});
         }
