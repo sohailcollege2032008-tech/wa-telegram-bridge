@@ -28,7 +28,7 @@ async function main() {
   let lastQrSentAt = 0;
 
   const connection = await createWhatsAppConnection({
-    config,
+    config: config.whatsapp,
     logger,
     baileys,
     onMessage: handleMessage,
