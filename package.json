@@ -1,0 +1,20 @@
+{
+  "name": "wa-telegram-bridge",
+  "version": "1.0.0",
+  "description": "WhatsApp → Telegram bridge: forwards messages, voice notes and files from a linked WhatsApp account to Telegram via a Telegram bot.",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/index.js",
+    "test": "node --test",
+    "e2e:telegram": "node --env-file-if-exists=.env scripts/e2e-telegram.js"
+  },
+  "dependencies": {
+    "baileys": "6.7.24",
+    "pino": "^9.6.0",
+    "qrcode": "^1.5.4"
+  }
+}

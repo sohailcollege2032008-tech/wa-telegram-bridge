@@ -1,0 +1,19 @@
+[Unit]
+Description=WhatsApp to Telegram Bridge (Baileys)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/wa-telegram-bridge
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node --env-file-if-exists=/opt/wa-telegram-bridge/.env /opt/wa-telegram-bridge/src/index.js
+Restart=always
+RestartSec=10
+MemoryMax=1500M
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
