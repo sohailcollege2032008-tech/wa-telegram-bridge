@@ -49,7 +49,7 @@ export function splitCaption(caption) {
 export class TelegramClient {
   constructor({ token, apiBase = 'https://api.telegram.org/bot', logger }) {
     this.token = token;
-    this.apiBase = apiBase.endsWith('/') ? apiBase : `${apiBase}/`;
+    this.apiBase = String(apiBase).replace(/\/+$/, '');
     this.log = logger;
   }
 
