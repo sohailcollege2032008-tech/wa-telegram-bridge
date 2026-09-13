@@ -13,7 +13,7 @@
     "e2e:telegram": "node --env-file-if-exists=.env scripts/e2e-telegram.js"
   },
   "dependencies": {
-    "baileys": "6.7.24",
+    "baileys": "^7.0.0-rc14",
     "pino": "^9.6.0",
     "qrcode": "^1.5.4"
   }
