@@ -1,6 +1,7 @@
 import { mkdir } from 'node:fs/promises';
 
-const PAIRING_RETRY_MS = 3 * 60_000;
+const PAIRING_RETRY_MS = 4 * 60_000;
+const MAX_PAIRING_ATTEMPTS = 6;
 
 export async function createWhatsAppConnection({
   config,
@@ -22,6 +23,10 @@ export async function createWhatsAppConnection({
 
   async function requestPairing() {
     if (config.pairingMode !== 'code' || !config.phone) return;
+    if (pairingAttempts >= MAX_PAIRING_ATTEMPTS) {
+      logger.warn('pairing attempts exhausted; restart the service to request a new code');
+      return;
+    }
     const now = Date.now();
     if (pairingRequestedAt && now - pairingRequestedAt < PAIRING_RETRY_MS) return;
     pairingRequestedAt = now;
