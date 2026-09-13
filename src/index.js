@@ -26,7 +26,7 @@ async function main() {
   const handleMessage = createForwarder({ config, telegram, logger, baileys, tempRoot });
 
   let lastOpenNoticeAt = 0;
-  let lastQrSentAt = 0;
+  let lastQrMessageId = null;
   let waState = config.whatsapp.phone ? 'connecting' : 'unpaired';
 
   const connection = await createWhatsAppConnection({
@@ -42,18 +42,20 @@ async function main() {
       );
     },
     onQr: async (qr) => {
-      if (Date.now() - lastQrSentAt < 60_000) return;
-      lastQrSentAt = Date.now();
       const QRCode = (await import('qrcode')).default;
       const dir = await mkdtemp(path.join(os.tmpdir(), 'wa-qr-'));
       const file = path.join(dir, 'whatsapp-qr.png');
       try {
         await writeFile(file, await QRCode.toBuffer(qr, { type: 'png', width: 720, margin: 2 }));
-        await telegram.sendPhoto(config.telegram.chatId, file, {
-          caption: `📷 امسح كود QR من واتساب: الإعدادات → الأجهزة المرتبطة → ربط جهاز.\n${PAIRING_HINT}`,
+        if (lastQrMessageId) {
+          await telegram.call('deleteMessage', { chat_id: config.telegram.chatId, message_id: lastQrMessageId }).catch(() => {});
+        }
+        const sent = await telegram.sendPhoto(config.telegram.chatId, file, {
+          caption: '📷 امسح الـ QR حالاً من واتساب (الحساب الجديد): الإعدادات → الأجهزة المرتبطة → ربط جهاز.\n⚠️ الصورة دي بتتحدّث تلقائياً كل ~20 ثانية — دايماً امسح آخر صورة في الشات.',
           filename: 'whatsapp-qr.png',
           mimeType: 'image/png',
         });
+        lastQrMessageId = sent?.message_id || null;
       } finally {
         await rm(dir, { recursive: true, force: true });
       }
