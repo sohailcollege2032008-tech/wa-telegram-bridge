@@ -1,7 +1,7 @@
 import { mkdir } from 'node:fs/promises';
 
-const PAIRING_RETRY_MS = 4 * 60_000;
-const MAX_PAIRING_ATTEMPTS = 6;
+const PAIRING_RETRY_MS = 2 * 60_000;
+const MAX_PAIRING_ATTEMPTS = 10;
 
 export async function createWhatsAppConnection({
   config,
@@ -75,14 +75,21 @@ export async function createWhatsAppConnection({
 
       if (connection === 'close') {
         const statusCode = lastDisconnect?.error?.output?.statusCode;
+        const registered = state.creds.registered;
         const loggedOut = statusCode === baileys.DisconnectReason.loggedOut;
         const replaced = statusCode === baileys.DisconnectReason.connectionReplaced;
-        logger.warn({ statusCode, loggedOut, replaced }, 'whatsapp connection closed');
+        logger.warn({ statusCode, loggedOut, replaced, registered }, 'whatsapp connection closed');
         await onStateChange?.('close', { statusCode, loggedOut, replaced });
         if (stopped) return;
-        if (loggedOut) {
+        if (loggedOut && registered) {
           stopped = true;
           await onStateChange?.('loggedOut', {});
+          return;
+        }
+        if (loggedOut && !registered) {
+          logger.info('pairing attempt failed or expired; requesting a new code shortly');
+          pairingRequestedAt = 0;
+          setTimeout(connect, 3_000);
           return;
         }
         const delay = reconnectDelay;
