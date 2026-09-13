@@ -96,6 +96,12 @@ export async function createWhatsAppConnection({
           setTimeout(connect, delay);
           return;
         }
+        if (statusCode === 408) {
+          logger.info('qr refs exhausted; refreshing the registration session');
+          reconnectDelay = 3_000;
+          setTimeout(connect, 3_000);
+          return;
+        }
         const delay = reconnectDelay;
         reconnectDelay = Math.min(reconnectDelay * 2, 60_000);
         setTimeout(connect, delay);
